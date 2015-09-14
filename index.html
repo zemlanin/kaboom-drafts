@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>kaboom</title>
+  <style type="text/css">
+    * { font-family: monospace }
+    blockquote { background-color: #d3d3d3 }
+  </style>
+</head>
+<body>
+  <div id="that-one" data-bazooka="boom clicker" data-do="
+    click: @[innerText] | log _;
+    #other click: _[target] | append _ | log _
+  ">
+    lol
+  </div>
+  <blockquote data-bazooka="display" data-display="#that-one"></blockquote>
+  <div id="other" data-bazooka="clicker">
+    wat
+  </div>
+  <blockquote data-bazooka="display" data-display="#other"></blockquote>
+  <ul>
+    <li><b>_</b> => placeholder for args</li>
+    <li><b>@</b> => current node</li>
+    <li><b>#id</b> => node with id</li>
+    <li><b>_[something]</b> => arg.something</li>
+    <li><b>@[something]</b> => node.something</li>
+  </ul>
+  <hr>
+  <script type="text/javascript" src="https://raw.githubusercontent.com/seedofjoy/bazooka/master/dist/bazooka.js"></script>
+  <script type="text/javascript">
+    'use strict'
+    var boom, clicker, display
+
+    boom = {
+      bazFunc: function (node) {
+        node.getAttribute('data-do')
+      },
+      log: console.log.bind(console),
+      append: function (v) { return v + 1 },
+    }
+
+    clicker = {
+      click: function (node) {},
+    }
+
+    display = function (node) {
+      var displayedNode = document.querySelector(node.dataset.display)
+
+      if (displayedNode) {
+        node.innerText = displayedNode.outerHTML
+      }
+    }
+
+    Baz.register({
+      boom: boom,
+      clicker: clicker,
+      display: display,
+    })
+
+    Baz.refresh()
+  </script>
+</body>
+</html>
