@@ -8,17 +8,17 @@
   </style>
 </head>
 <body>
-  <div id="that-one" data-bazooka="boom clicker"
+  <button id="that-one" data-bazooka="boom clicker"
     data-do-json='
       [["trigger", "clicker/click", ["e"],
-          ["clicker/bam"],
+          ["clicker/bam", ["get", "e", ":target"]],
           ["log", ["get", "e", ":target"]]],
         ["##", "->",
           ["attr", "#@", "innerText"],
           ["log", "#_"]]]
   '>
     lol
-  </div>
+  </button>
   <blockquote data-bazooka="display" data-display="#that-one"></blockquote>
   <div id="other" data-bazooka="clicker">
     wat
@@ -103,7 +103,14 @@
       events: {
         'click': function (node, pub) { node.onclick = pub }
       },
-      "bam": function () {console.log("BAM")}
+      "bam": function (node) {
+        console.log("BAM")
+        if (node.getAttribute('style')) {
+          node.removeAttribute('style')
+        } else {
+          node.setAttribute('style', 'background-color: black; color: white')
+        }
+      }
     }
 
     display = function (node) {
