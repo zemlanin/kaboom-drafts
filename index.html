@@ -8,10 +8,15 @@
   </style>
 </head>
 <body>
-  <div id="that-one" data-bazooka="boom clicker" data-do="
-    click: @[innerText] | log _;
-    #other click: _[target] | append _ | log _
-  ">
+  <div id="that-one" data-bazooka="boom clicker"
+    data-do-json='
+      [["trigger", "clicker/click", ["e"],
+          ["clicker/bam"],
+          ["log", ["get", "e", ":target"]]],
+        ["##", "->",
+          ["attr", "#@", "innerText"],
+          ["log", "#_"]]]
+  '>
     lol
   </div>
   <blockquote data-bazooka="display" data-display="#that-one"></blockquote>
@@ -19,30 +24,86 @@
     wat
   </div>
   <blockquote data-bazooka="display" data-display="#other"></blockquote>
-  <ul>
-    <li><b>_</b> => placeholder for args</li>
-    <li><b>@</b> => current node</li>
-    <li><b>#id</b> => node with id</li>
-    <li><b>_[something]</b> => arg.something</li>
-    <li><b>@[something]</b> => node.something</li>
-  </ul>
   <hr/>
     <a href="https://github.com/zemlanin/kaboom-drafts">repo</a>
   <script type="text/javascript" src="./bazooka.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
   <script type="text/javascript">
     'use strict'
     var boom, clicker, display
 
-    boom = {
-      bazFunc: function (node) {
-        node.getAttribute('data-do')
+    var boomFuncs = {
+      _call: function (args, bindings) {
+        if (args.length === 0) {
+          return null
+        }
+
+        return boomFuncs
+          ._resolve(args[0], bindings)
+          .apply(
+            null,
+            _.map(
+              args.splice(1),
+              function (arg) { return boomFuncs._resolve(arg, bindings) }
+            )
+          )
+      },
+      _resolve: function (expr, bindings) {
+        if (_.isArray(expr)) {
+          return boomFuncs._call(expr, bindings)
+        }
+
+        if (expr.startsWith && expr.startsWith(':')) {
+          return expr.replace(/^:/, '')
+        }
+
+        if (expr.split && expr.split('/').length == 2) {
+          return ((bindings || {})[expr.split('/')[0]] || {})[expr.split('/')[1]]
+        }
+
+        return (bindings || {})[expr] || boomFuncs[expr] || null
       },
       log: console.log.bind(console),
-      append: function (v) { return v + 1 },
+      get: function (obj, key) { return obj[key] },
+      "##": _.noop, // comments
     }
 
+    var boomHandle = function (csp, data) {
+      return _.each(
+        csp,
+        function (l) { boomFuncs._resolve(_.cloneDeep(l), {e: data, clicker: clicker}) }
+      )
+    }
+
+    boom = {
+      bazFunc: function (node) {
+        var doJSON = JSON.parse(node.getAttribute('data-do-json'))
+
+        for (var i = 0; i < doJSON.length; i++) {
+          if (doJSON[i][0] === 'trigger') {
+            _.chain(Baz(node).getComponents())
+              .find(function (c, name) {
+                return _.some(c.events, function (evHandler, evName) {
+                  return doJSON[i][1] === name + '/' + evName || doJSON[i][1] === evName
+                })
+              })
+              .get('events.' + doJSON[i][1].replace(/^[a-zA-Z0-9]+\//i, ''), _.noop)
+              .value()(node, boomHandle.bind(null, doJSON[i].slice(3)))
+          }
+        }
+
+        doJSON = null
+      },
+    }
+
+    // ===================================
+
     clicker = {
-      click: function (node) {},
+      bazFunc: function (node) {},
+      events: {
+        'click': function (node, pub) { node.onclick = pub }
+      },
+      "bam": function () {console.log("BAM")}
     }
 
     display = function (node) {
@@ -50,6 +111,9 @@
 
       if (displayedNode) {
         node.innerText = displayedNode.outerHTML
+          .replace(/^  /gm, '')
+          .replace(/&quot;/g, "'")
+          .replace(/ (?![^ ])/gm, " ") // not a space http://www.fileformat.info/info/unicode/char/2003/index.htm
       }
     }
 
