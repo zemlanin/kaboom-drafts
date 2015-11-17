@@ -13,6 +13,7 @@
       [["trigger", "clicker/click", ["e"],
           ["clicker/bam", ["get", "e", ":target"]],
           ["log", ["get", "e", ":target"]]],
+        ["f"],
         ["##", "->",
           ["attr", "#@", "innerText"],
           ["log", "#_"]]]
@@ -36,19 +37,30 @@
 
     var boomFuncs = {
       call: function (bindings, args) {
-        if (args.length === 0) {
+        var func
+        var error
+        if (args.length === 0) { return null }
+
+        func = boomFuncs.resolve(bindings, args[0])
+
+        if (!func || !func.apply) {
+          console.error(
+            'function `%s` is not found in current namespace %o\n%s',
+            args[0],
+            bindings.node,
+            bindings.node.getAttribute('data-do-json').replace(/^\n|\n\s*$/g, '')
+          )
+
           return null
         }
 
-        return boomFuncs
-          .resolve(bindings, args[0])
-          .apply(
-            null,
-            macros[args[0]] ? [bindings].concat(args.splice(1)) : _.map(
-              args.splice(1),
-              boomFuncs.resolve.bind(this, _.cloneDeep(bindings))
-            )
+        return func.apply(
+          null,
+          macros[args[0]] ? [bindings].concat(args.splice(1)) : _.map(
+            args.splice(1),
+            boomFuncs.resolve.bind(this, _.cloneDeep(bindings))
           )
+        )
       },
       resolve: function (bindings, expr) {
         if (_.isArray(expr)) { return boomFuncs.call(bindings, expr) }
