@@ -32,67 +32,74 @@
     'use strict'
     var boom, clicker, display
 
+    var macros = {trigger: 1, '##': 1, call: 1, resolve: 1}
+
     var boomFuncs = {
-      _call: function (args, bindings) {
+      call: function (bindings, args) {
         if (args.length === 0) {
           return null
         }
 
         return boomFuncs
-          ._resolve(args[0], bindings)
+          .resolve(bindings, args[0])
           .apply(
             null,
-            _.map(
+            macros[args[0]] ? [bindings].concat(args.splice(1)) : _.map(
               args.splice(1),
-              function (arg) { return boomFuncs._resolve(arg, bindings) }
+              boomFuncs.resolve.bind(this, _.cloneDeep(bindings))
             )
           )
       },
-      _resolve: function (expr, bindings) {
-        if (_.isArray(expr)) {
-          return boomFuncs._call(expr, bindings)
-        }
+      resolve: function (bindings, expr) {
+        if (_.isArray(expr)) { return boomFuncs.call(bindings, expr) }
 
-        if (expr.startsWith && expr.startsWith(':')) {
-          return expr.replace(/^:/, '')
-        }
+        if (expr.startsWith && expr.startsWith(':')) { return expr.replace(/^:/, '') }
 
-        if (expr.split && expr.split('/').length == 2) {
-          return ((bindings || {})[expr.split('/')[0]] || {})[expr.split('/')[1]]
+        if (expr.split) {
+          if (expr.split('/').length == 2) {
+            return ((bindings || {})[expr.split('/')[0]] || {})[expr.split('/')[1]]
+          } else if (expr.split('/').length > 2) {
+            throw new Error('Too many slashes', expr)
+          }
         }
 
         return (bindings || {})[expr] || boomFuncs[expr] || null
       },
       log: console.log.bind(console),
       get: function (obj, key) { return obj[key] },
-      "##": _.noop, // comments
-    }
+      "##": function () {}, // comments,
+      trigger: function (bindings, evSymbol, bindingNames) {
+        var funcs = _.cloneDeep(Array.prototype.splice.call(arguments, 3))
 
-    var boomHandle = function (csp, data) {
-      return _.each(
-        csp,
-        function (l) { boomFuncs._resolve(_.cloneDeep(l), {e: data, clicker: clicker}) }
-      )
+        bindings[evSymbol.split('/')[0]].events[evSymbol.split('/')[1]](
+          bindings.node,
+          function () {
+            var bs = _.cloneDeep(bindings)
+            for (var i = 0; i < bindingNames.length; i++) {
+              bs[bindingNames[i]] = arguments[i]
+            }
+
+            for (var j = 0; j < funcs.length; j++) {
+              boomFuncs.resolve(bs, _.cloneDeep(funcs[j]))
+            }
+
+            bs = null
+          }
+        )
+      }
     }
 
     boom = {
       bazFunc: function (node) {
         var doJSON = JSON.parse(node.getAttribute('data-do-json'))
+        var bindings = _.merge(Baz(node).getComponents(), {node: node})
 
         for (var i = 0; i < doJSON.length; i++) {
-          if (doJSON[i][0] === 'trigger') {
-            _.chain(Baz(node).getComponents())
-              .find(function (c, name) {
-                return _.some(c.events, function (evHandler, evName) {
-                  return doJSON[i][1] === name + '/' + evName || doJSON[i][1] === evName
-                })
-              })
-              .get('events.' + doJSON[i][1].replace(/^[a-zA-Z0-9]+\//i, ''), _.noop)
-              .value()(node, boomHandle.bind(null, doJSON[i].slice(3)))
-          }
+          boomFuncs.resolve(bindings, doJSON[i])
         }
 
         doJSON = null
+        bindings = null
       },
     }
 
@@ -101,9 +108,9 @@
     clicker = {
       bazFunc: function (node) {},
       events: {
-        'click': function (node, pub) { node.onclick = pub }
+        click: function (node, pub) { node.onclick = pub }
       },
-      "bam": function (node) {
+      bam: function (node) {
         console.log("BAM")
         if (node.getAttribute('style')) {
           node.removeAttribute('style')
