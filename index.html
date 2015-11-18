@@ -11,12 +11,10 @@
   <button id="that-one" data-bazooka="boom clicker"
     data-do-json='
       [["trigger", "clicker/click", ["e"],
-          ["clicker/bam", ["get", "e", ":target"]],
+          ["clicker/toggle", ["get", "e", ":target"]],
           ["log", ["get", "e", ":target"]]],
-        ["f"],
-        ["##", "->",
-          ["attr", "#@", "innerText"],
-          ["log", "#_"]]]
+        ["function-not-found"],
+        ["##", "comment"]]
   '>
     lol
   </button>
@@ -35,10 +33,27 @@
 
     var macros = {trigger: 1, '##': 1, call: 1, resolve: 1}
 
+    var baseFn = function (bindings, bindingNames, funcs) {
+      return function () {
+        var bs = _.cloneDeep(bindings)
+        var result
+        for (var i = 0; i < bindingNames.length; i++) {
+          bs[bindingNames[i]] = arguments[i]
+        }
+
+        for (var j = 0; j < funcs.length; j++) {
+          result = boomFuncs.resolve(bs, _.cloneDeep(funcs[j]))
+        }
+
+        bs = null
+
+        return result
+      }
+    }
+
     var boomFuncs = {
       call: function (bindings, args) {
         var func
-        var error
         if (args.length === 0) { return null }
 
         func = boomFuncs.resolve(bindings, args[0])
@@ -81,22 +96,9 @@
       get: function (obj, key) { return obj[key] },
       "##": function () {}, // comments,
       trigger: function (bindings, evSymbol, bindingNames) {
-        var funcs = _.cloneDeep(Array.prototype.splice.call(arguments, 3))
-
-        bindings[evSymbol.split('/')[0]].events[evSymbol.split('/')[1]](
+        return bindings[evSymbol.split('/')[0]].events[evSymbol.split('/')[1]](
           bindings.node,
-          function () {
-            var bs = _.cloneDeep(bindings)
-            for (var i = 0; i < bindingNames.length; i++) {
-              bs[bindingNames[i]] = arguments[i]
-            }
-
-            for (var j = 0; j < funcs.length; j++) {
-              boomFuncs.resolve(bs, _.cloneDeep(funcs[j]))
-            }
-
-            bs = null
-          }
+          baseFn(bindings, bindingNames, Array.prototype.splice.call(arguments, 3))
         )
       }
     }
@@ -122,8 +124,7 @@
       events: {
         click: function (node, pub) { node.onclick = pub }
       },
-      bam: function (node) {
-        console.log("BAM")
+      toggle: function (node) {
         if (node.getAttribute('style')) {
           node.removeAttribute('style')
         } else {
