@@ -9,7 +9,7 @@
 </head>
 <body>
   <button id="that-one" data-bazooka="boom clicker"
-    data-do-json='
+    data-do='
       [["trigger", "clicker/click", ["e"],
           ["clicker/toggle", ["get", "e", ":target"]],
           ["log", ["get", "e", ":target"]]],
@@ -59,7 +59,7 @@
             'function `%s` is not found in current namespace %o\n%s',
             args[0],
             bindings.node,
-            bindings.node.getAttribute('data-do-json').replace(/^\n|\n\s*$/g, '')
+            bindings.node.getAttribute('data-do').replace(/^\n|\n\s*$/g, '')
           )
 
           return null
@@ -101,7 +101,7 @@
 
     boom = {
       bazFunc: function (node) {
-        var doJSON = JSON.parse(node.getAttribute('data-do-json'))
+        var doJSON = JSON.parse(node.getAttribute('data-do'))
         var bindings = _.merge(Baz(node).getComponents(), {node: node})
 
         for (var i = 0; i < doJSON.length; i++) {
