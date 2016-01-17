@@ -68,7 +68,7 @@
           func = boomFuncs.resolve(bindings, args[0])
         }
 
-        if (boomFuncs["function?"](func)) {
+        if (!boomFuncs["function?"](func)) {
           console.error(
             'function `%s` is not found in current namespace %o\n%s',
             args[0], bindings,
