@@ -4,7 +4,7 @@
   <title>kaboom</title>
   <style type="text/css">
     * { font-family: monospace }
-    blockquote { background-color: #d3d3d3 }
+    pre { background-color: #d3d3d3 }
   </style>
 </head>
 <body>
@@ -18,14 +18,14 @@
   '>
     lol
   </button>
-  <blockquote data-bazooka="display" data-display="#that-one"></blockquote>
+  <pre data-bazooka="display" data-display="#that-one"></pre>
   <hr/>
   <a href="https://github.com/zemlanin/kaboom-drafts">repo</a>
   <script type="text/javascript" src="./bazooka.js"></script>
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
   <script type="text/javascript">
     'use strict'
-    var boom, clicker, display
+    var boom
 
     var macros = {hear: 1, '##': 1, call: 1, resolve: 1}
 
@@ -128,6 +128,8 @@
 
     // ===================================
 
+    var clicker, display
+
     clicker = {
       bazFunc: function (node) {},
       events: {
@@ -146,10 +148,7 @@
       var displayedNode = document.querySelector(node.dataset.display)
 
       if (displayedNode) {
-        node.innerText = displayedNode.outerHTML
-          .replace(/^  /gm, '')
-          .replace(/&quot;/g, "'")
-          .replace(/ (?![^ ])/gm, " ") // not a space http://www.fileformat.info/info/unicode/char/2003/index.htm
+        node.innerText = displayedNode.outerHTML.replace(/^  /gm, '').replace(/&quot;/g, "\"")
       }
     }
 
