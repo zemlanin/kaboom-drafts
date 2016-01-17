@@ -13,8 +13,8 @@
       [["hear", "clicker/click", ["e"],
           ["clicker/toggle", ["get", "e", ":target"]],
           ["log", [":target", "e"]]],
-        ["function-not-found"],
-        ["##", "comment"]]
+        // comment
+        ["function-not-found"]]
   '>
     lol
   </button>
@@ -103,7 +103,6 @@
       },
       log: console.log.bind(console),
       get: function (obj, key) { return obj[key] },
-      "##": function () {}, // comments,
       hear: function (bindings, evSymbol, bindingNames) {
         return bindings[evSymbol.split('/')[0]].events[evSymbol.split('/')[1]](
           bindings.node,
@@ -114,7 +113,7 @@
 
     boom = {
       bazFunc: function (node) {
-        var doJSON = JSON.parse(node.getAttribute('data-do'))
+        var doJSON = JSON.parse(node.getAttribute('data-do').replace(/^\s*\/\/.*$/gm, ''))
         var bindings = _.merge(Baz(node).getComponents(), {node: node})
 
         for (var i = 0; i < doJSON.length; i++) {
