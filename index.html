@@ -80,10 +80,9 @@
 
         return func.apply(
           null,
-          macros[args[0]] ? [bindings].concat(args.splice(1)) : _.map(
-            args.splice(1),
-            boomFuncs.resolve.bind(this, _.cloneDeep(bindings))
-          )
+          macros[args[0]]
+            ? [bindings].concat(args.splice(1))
+            : args.splice(1).map(boomFuncs.resolve.bind(this, _.cloneDeep(bindings)))
         )
       },
       resolve: function (bindings, expr) {
