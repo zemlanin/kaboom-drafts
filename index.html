@@ -25,31 +25,27 @@
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
   <script type="text/javascript">
     'use strict'
-    var boom
-
     var macros = {hear: 1, '##': 1, call: 1, resolve: 1}
 
     var baseFn = function (bindings, bindingNames, funcs) {
       return function () {
-        var bs = _.cloneDeep(bindings)
-        var result
+        var result, bs = _.cloneDeep(bindings)
+
         for (var i = 0; i < bindingNames.length; i++) {
           bs[bindingNames[i]] = arguments[i]
         }
-
         for (var j = 0; j < funcs.length; j++) {
           result = boomFuncs.resolve(bs, _.cloneDeep(funcs[j]))
         }
 
         bs = null
-
         return result
       }
     }
 
     var boomFuncs = {
       "string?": function (expr) {
-        return !!expr.startsWith && expr.startsWith(':')
+        return expr != null && !!expr.startsWith && expr.startsWith(':')
       },
       string: function (expr) {
         if (boomFuncs["string?"](expr)) {
@@ -57,21 +53,25 @@
         }
         return expr
       },
+      "function?": function (expr) {
+        return !!expr && !!expr.apply
+      },
       call: function (bindings, args) {
         var func
         if (args.length === 0) { return null }
 
         if (boomFuncs["string?"](args[0])) {
           func = function (obj) { return boomFuncs.get(obj, boomFuncs["string"](args[0])) }
+        } else if (boomFuncs["function?"](args[0])) {
+          func = args[0]
         } else {
           func = boomFuncs.resolve(bindings, args[0])
         }
 
-        if (!func || !func.apply) {
+        if (boomFuncs["function?"](func)) {
           console.error(
             'function `%s` is not found in current namespace %o\n%s',
-            args[0],
-            bindings.node,
+            args[0], bindings,
             bindings.node.getAttribute('data-do').replace(/^\n|\n\s*$/g, '')
           )
 
@@ -111,7 +111,7 @@
       }
     }
 
-    boom = {
+    var boom = {
       bazFunc: function (node) {
         var doJSON = JSON.parse(node.getAttribute('data-do').replace(/^\s*\/\/.*$/gm, ''))
         var bindings = _.merge(Baz(node).getComponents(), {node: node})
