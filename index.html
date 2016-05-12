@@ -10,7 +10,7 @@
 <body>
   <button id="that-one" data-bazooka="boom clicker"
     data-do='
-      [["hear", "clicker/click", ["e"],
+      [["listen", "clicker/click", ["e"],
           ["clicker/toggle", ["get", "e", ":target"]],
           ["log", [":target", "e"]]],
         // comment
@@ -25,8 +25,6 @@
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
   <script type="text/javascript">
     'use strict'
-    var macros = {hear: 1, '##': 1, call: 1, resolve: 1}
-
     var baseFn = function (bindings, bindingNames, funcs) {
       return function () {
         var result, bs = _.cloneDeep(bindings)
@@ -80,7 +78,7 @@
 
         return func.apply(
           null,
-          macros[args[0]]
+          func._boomWithBindings
             ? [bindings].concat(args.splice(1))
             : args.splice(1).map(boomFuncs.resolve.bind(this, _.cloneDeep(bindings)))
         )
@@ -102,13 +100,17 @@
       },
       log: console.log.bind(console),
       get: function (obj, key) { return obj[key] },
-      hear: function (bindings, evSymbol, bindingNames) {
+      listen: function (bindings, evSymbol, bindingNames) {
         return bindings[evSymbol.split('/')[0]].events[evSymbol.split('/')[1]](
           bindings.node,
           baseFn(bindings, bindingNames, Array.prototype.splice.call(arguments, 3))
         )
       }
     }
+
+    boomFuncs.call._boomWithBindings = true
+    boomFuncs.resolve._boomWithBindings = true
+    boomFuncs.listen._boomWithBindings = true
 
     var boom = {
       bazFunc: function (node) {
