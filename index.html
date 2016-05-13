@@ -12,7 +12,7 @@
     data-do='
       [["listen", "clicker/click", ["e"],
           ["clicker/toggle", ["get", "e", ":target"]],
-          ["log", [":target", "e"]]],
+          ["log", "e", [":target", "e"]]],
         // comment
         ["function-not-found"]]
   '>
@@ -42,45 +42,33 @@
     }
 
     var boomFuncs = {
-      "string?": function (expr) {
-        return expr != null && !!expr.startsWith && expr.startsWith(':')
-      },
-      string: function (expr) {
-        if (boomFuncs["string?"](expr)) {
-          return expr.replace(/^:/, '')
-        }
-        return expr
-      },
-      "function?": function (expr) {
-        return !!expr && !!expr.apply
-      },
+      // ============ core ============
       call: function (bindings, args) {
-        var func
-        if (args.length === 0) { return null }
+        var func, funcName = args[0]
 
-        if (boomFuncs["string?"](args[0])) {
-          func = function (obj) { return boomFuncs.get(obj, boomFuncs["string"](args[0])) }
-        } else if (boomFuncs["function?"](args[0])) {
-          func = args[0]
+        if (!funcName) { return null }
+
+        if (boomFuncs["string?"](funcName)) {
+          func = function (obj) { return boomFuncs.get(obj, boomFuncs["string"](funcName)) }
         } else {
-          func = boomFuncs.resolve(bindings, args[0])
-        }
+          func = boomFuncs.resolve(bindings, funcName)
 
-        if (!boomFuncs["function?"](func)) {
-          console.error(
-            'function `%s` is not found in current namespace %o\n%s',
-            args[0], bindings,
-            bindings.node.getAttribute('data-do').replace(/^\n|\n\s*$/g, '')
-          )
+          if (!boomFuncs["function?"](func)) {
+            console.error(
+              'function `%s` is not found in current namespace %o\n%s',
+              funcName, bindings,
+              bindings.node.dataset.do.replace(/^\n|\n\s*$/g, '')
+            )
 
-          return null
+            return null
+          }
         }
 
         return func.apply(
           null,
           func._boomWithBindings
             ? [bindings].concat(args.splice(1))
-            : args.splice(1).map(boomFuncs.resolve.bind(this, _.cloneDeep(bindings)))
+            : args.splice(1).map(boomFuncs.resolve.bind(null, _.cloneDeep(bindings)))
         )
       },
       resolve: function (bindings, expr) {
@@ -98,14 +86,25 @@
 
         return (bindings || {})[expr] || boomFuncs[expr] || null
       },
-      log: console.log.bind(console),
-      get: function (obj, key) { return obj[key] },
       listen: function (bindings, evSymbol, bindingNames) {
         return bindings[evSymbol.split('/')[0]].events[evSymbol.split('/')[1]](
           bindings.node,
           baseFn(bindings, bindingNames, Array.prototype.splice.call(arguments, 3))
         )
-      }
+      },
+      // ======== library ========
+      "string?": function (expr) {
+        return expr != null && !!expr.startsWith && expr.startsWith(':')
+      },
+      "function?": function (expr) { return !!expr && !!expr.apply },
+      string: function (expr) {
+        if (boomFuncs["string?"](expr)) {
+          return expr.replace(/^:/, '')
+        }
+        return expr
+      },
+      log: console.log.bind(console),
+      get: function (obj, key) { return obj[key] },
     }
 
     boomFuncs.call._boomWithBindings = true
@@ -114,7 +113,7 @@
 
     var boom = {
       bazFunc: function (node) {
-        var doJSON = JSON.parse(node.getAttribute('data-do').replace(/^\s*\/\/.*$/gm, ''))
+        var doJSON = JSON.parse(node.dataset.do.replace(/^\s*\/\/.*$/gm, ''))
         var bindings = _.merge(Baz(node).getComponents(), {node: node})
 
         for (var i = 0; i < doJSON.length; i++) {
