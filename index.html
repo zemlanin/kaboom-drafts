@@ -8,129 +8,28 @@
   </style>
 </head>
 <body>
-  <button id="that-one" data-bazooka="boom clicker"
-    data-do='
-      [["listen", "clicker/click", ["e"],
-          ["clicker/toggle", ["get", "e", ":target"]],
-          ["log", "e", [":target", "e"]]],
+  <button id="that-one" data-bazooka="clicker"
+    data-clicker-do='
+      [["listen", "click", ["e"],
+          ["toggle", "e.target"],
+          ["log", "params.logString", "e"]],
         // comment
         ["function-not-found"]]
-  '>
+    '
+    data-clicker-do-params='{
+      "logString": "lol"
+    }'>
     lol
   </button>
   <pre data-bazooka="display" data-display="#that-one"></pre>
   <hr/>
   <a href="https://github.com/zemlanin/kaboom-drafts">repo</a>
-  <script type="text/javascript" src="./bazooka.js"></script>
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
+  <script type="text/javascript" src="./dist/bazooka.js"></script>
+  <script type="text/javascript" src="./dist/kaboom.js"></script>
   <script type="text/javascript">
     'use strict'
-    var baseFn = function (bindings, bindingNames, funcs) {
-      return function () {
-        var result, bs = _.cloneDeep(bindings)
 
-        for (var i = 0; i < bindingNames.length; i++) {
-          bs[bindingNames[i]] = arguments[i]
-        }
-        for (var j = 0; j < funcs.length; j++) {
-          result = boomFuncs.resolve(bs, _.cloneDeep(funcs[j]))
-        }
-
-        bs = null
-        return result
-      }
-    }
-
-    var boomFuncs = {
-      // ============ core ============
-      call: function (bindings, args) {
-        var func, funcName = args[0]
-
-        if (!funcName) { return null }
-
-        if (boomFuncs["string?"](funcName)) {
-          func = function (obj) { return boomFuncs.get(obj, boomFuncs["string"](funcName)) }
-        } else {
-          func = boomFuncs.resolve(bindings, funcName)
-
-          if (!boomFuncs["function?"](func)) {
-            console.error(
-              'function `%s` is not found in current namespace %o\n%s',
-              funcName, bindings,
-              bindings.node.dataset.do.replace(/^\n|\n\s*$/g, '')
-            )
-
-            return null
-          }
-        }
-
-        return func.apply(
-          null,
-          func._boomWithBindings
-            ? [bindings].concat(args.splice(1))
-            : args.splice(1).map(boomFuncs.resolve.bind(null, _.cloneDeep(bindings)))
-        )
-      },
-      resolve: function (bindings, expr) {
-        if (_.isArray(expr)) { return boomFuncs.call(bindings, expr) }
-
-        if (boomFuncs["string?"](expr)) { return boomFuncs["string"](expr) }
-
-        if (expr.split) {
-          if (expr.split('/').length == 2) {
-            return ((bindings || {})[expr.split('/')[0]] || {})[expr.split('/')[1]]
-          } else if (expr.split('/').length > 2) {
-            throw new Error('Too many slashes', expr)
-          }
-        }
-
-        return (bindings || {})[expr] || boomFuncs[expr] || null
-      },
-      listen: function (bindings, evSymbol, bindingNames) {
-        return bindings[evSymbol.split('/')[0]].events[evSymbol.split('/')[1]](
-          bindings.node,
-          baseFn(bindings, bindingNames, Array.prototype.splice.call(arguments, 3))
-        )
-      },
-      // ======== library ========
-      "string?": function (expr) {
-        return expr != null && !!expr.startsWith && expr.startsWith(':')
-      },
-      "function?": function (expr) { return !!expr && !!expr.apply },
-      string: function (expr) {
-        if (boomFuncs["string?"](expr)) {
-          return expr.replace(/^:/, '')
-        }
-        return expr
-      },
-      log: console.log.bind(console),
-      get: function (obj, key) { return obj[key] },
-    }
-
-    boomFuncs.call._boomWithBindings = true
-    boomFuncs.resolve._boomWithBindings = true
-    boomFuncs.listen._boomWithBindings = true
-
-    var boom = {
-      bazFunc: function (node) {
-        var doJSON = JSON.parse(node.dataset.do.replace(/^\s*\/\/.*$/gm, ''))
-        var bindings = _.merge(Baz(node).getComponents(), {node: node})
-
-        for (var i = 0; i < doJSON.length; i++) {
-          boomFuncs.resolve(bindings, doJSON[i])
-        }
-
-        doJSON = null
-        bindings = null
-      },
-    }
-
-    // ===================================
-
-    var clicker, display
-
-    clicker = {
-      bazFunc: function (node) {},
+    var clickerBoom = window.kaboom('clicker', {
       events: {
         click: function (node, pub) { node.onclick = pub }
       },
@@ -141,9 +40,13 @@
           node.setAttribute('style', 'background-color: black; color: white')
         }
       }
+    })
+
+    var clicker = function (node) {
+      clickerBoom(node)
     }
 
-    display = function (node) {
+    var display = function (node) {
       var displayedNode = document.querySelector(node.dataset.display)
 
       if (displayedNode) {
@@ -151,13 +54,12 @@
       }
     }
 
-    Baz.register({
-      boom: boom,
+    window.Baz.register({
       clicker: clicker,
       display: display,
     })
 
-    Baz.refresh()
+    window.Baz.refresh()
   </script>
 </body>
 </html>
